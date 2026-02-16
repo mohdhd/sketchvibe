@@ -1,8 +1,10 @@
-import { getProvider, getProviderForModel, type Provider } from './providers';
+import { getProvider, getProviderForModel, type Provider, type ProviderModel } from './providers';
+import type { Attachment } from './db';
 
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
+    attachments?: Attachment[];
 }
 
 export interface StreamCallbacks {
@@ -12,16 +14,108 @@ export interface StreamCallbacks {
 }
 
 /** Resolve a composite model ID (e.g. "gpt-5.2:high") into base model + optional thinking level */
-function resolveModelId(modelId: string): { baseModel: string; thinkingLevel?: string } {
+function resolveModelId(modelId: string): { baseModel: string; thinkingLevel?: string; modelDef?: ProviderModel } {
     // Find the model definition to check for thinkingLevel
     const provider = getProviderForModel(modelId);
     const modelDef = provider?.models.find((m) => m.id === modelId);
     if (modelDef?.thinkingLevel) {
         // Strip the ":level" suffix to get the actual API model name
         const baseModel = modelId.split(':')[0];
-        return { baseModel, thinkingLevel: modelDef.thinkingLevel };
+        return { baseModel, thinkingLevel: modelDef.thinkingLevel, modelDef };
     }
-    return { baseModel: modelId };
+    return { baseModel: modelId, modelDef: modelDef || undefined };
+}
+
+// ─── Helpers ───
+
+/** Extract raw base64 data from a data URL */
+function dataUrlToBase64(dataUrl: string): string {
+    return dataUrl.split(',')[1] || '';
+}
+
+/** Build OpenAI/Grok-compatible content array for a message with attachments */
+function buildOpenAIContent(msg: ChatMessage): string | Array<Record<string, unknown>> {
+    if (!msg.attachments?.length) return msg.content;
+
+    const parts: Array<Record<string, unknown>> = [];
+
+    // Text files: prepend their content
+    const textAttachments = msg.attachments.filter((a) => a.type === 'file');
+    let textContent = msg.content;
+    for (const att of textAttachments) {
+        const decoded = atob(dataUrlToBase64(att.dataUrl));
+        textContent = `[File: ${att.name}]\n${decoded}\n\n${textContent}`;
+    }
+
+    parts.push({ type: 'text', text: textContent });
+
+    // Images
+    for (const att of msg.attachments.filter((a) => a.type === 'image')) {
+        parts.push({
+            type: 'image_url',
+            image_url: { url: att.dataUrl },
+        });
+    }
+
+    return parts;
+}
+
+/** Build Anthropic content array for a message with attachments */
+function buildAnthropicContent(msg: ChatMessage): string | Array<Record<string, unknown>> {
+    if (!msg.attachments?.length) return msg.content;
+
+    const parts: Array<Record<string, unknown>> = [];
+
+    // Images first (Anthropic convention)
+    for (const att of msg.attachments.filter((a) => a.type === 'image')) {
+        parts.push({
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: att.mimeType,
+                data: dataUrlToBase64(att.dataUrl),
+            },
+        });
+    }
+
+    // Text files: prepend their content
+    const textAttachments = msg.attachments.filter((a) => a.type === 'file');
+    let textContent = msg.content;
+    for (const att of textAttachments) {
+        const decoded = atob(dataUrlToBase64(att.dataUrl));
+        textContent = `[File: ${att.name}]\n${decoded}\n\n${textContent}`;
+    }
+
+    parts.push({ type: 'text', text: textContent });
+
+    return parts;
+}
+
+/** Build Gemini parts array for a message with attachments */
+function buildGeminiParts(msg: ChatMessage): Array<Record<string, unknown>> {
+    const parts: Array<Record<string, unknown>> = [];
+
+    // Text files: prepend their content
+    const textAttachments = msg.attachments?.filter((a) => a.type === 'file') || [];
+    let textContent = msg.content;
+    for (const att of textAttachments) {
+        const decoded = atob(dataUrlToBase64(att.dataUrl));
+        textContent = `[File: ${att.name}]\n${decoded}\n\n${textContent}`;
+    }
+
+    parts.push({ text: textContent });
+
+    // Images
+    for (const att of (msg.attachments || []).filter((a) => a.type === 'image')) {
+        parts.push({
+            inlineData: {
+                mimeType: att.mimeType,
+                data: dataUrlToBase64(att.dataUrl),
+            },
+        });
+    }
+
+    return parts;
 }
 
 // ─── Main Entry ───
@@ -77,11 +171,19 @@ async function streamOpenAICompatible(
     callbacks: StreamCallbacks,
     signal?: AbortSignal
 ) {
-    const { baseModel, thinkingLevel } = resolveModelId(model);
+    const { baseModel, thinkingLevel, modelDef } = resolveModelId(model);
 
-    const body: Record<string, unknown> = { model: baseModel, messages, stream: true };
+    const formattedMessages = messages.map((m) => ({
+        role: m.role,
+        content: buildOpenAIContent(m),
+    }));
+
+    const body: Record<string, unknown> = { model: baseModel, messages: formattedMessages, stream: true };
     if (thinkingLevel) {
         body.reasoning_effort = thinkingLevel;
+    }
+    if (modelDef?.maxOutputTokens) {
+        body.max_completion_tokens = modelDef.maxOutputTokens;
     }
 
     const resp = await fetch(provider.endpointUrl, {
@@ -149,6 +251,14 @@ async function streamAnthropic(
     const systemMsg = messages.find((m) => m.role === 'system');
     const nonSystemMsgs = messages.filter((m) => m.role !== 'system');
 
+    const { modelDef } = resolveModelId(model);
+    const maxTokens = modelDef?.maxOutputTokens || 8192;
+
+    const formattedMessages = nonSystemMsgs.map((m) => ({
+        role: m.role,
+        content: buildAnthropicContent(m),
+    }));
+
     const resp = await fetch(provider.endpointUrl, {
         method: 'POST',
         headers: {
@@ -159,9 +269,9 @@ async function streamAnthropic(
         },
         body: JSON.stringify({
             model,
-            max_tokens: 8192,
+            max_tokens: maxTokens,
             system: systemMsg?.content || '',
-            messages: nonSystemMsgs.map((m) => ({ role: m.role, content: m.content })),
+            messages: formattedMessages,
             stream: true,
         }),
         signal,
@@ -221,8 +331,11 @@ async function streamGemini(
 
     const contents = chatMessages.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
+        parts: buildGeminiParts(m),
     }));
+
+    const { modelDef } = resolveModelId(model);
+    const maxOutputTokens = modelDef?.maxOutputTokens || 8192;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
 
@@ -234,7 +347,7 @@ async function streamGemini(
             systemInstruction: systemInstruction
                 ? { parts: [{ text: systemInstruction.content }] }
                 : undefined,
-            generationConfig: { maxOutputTokens: 8192 },
+            generationConfig: { maxOutputTokens },
         }),
         signal,
     });

@@ -1,13 +1,26 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Copy, Check } from 'lucide-react';
+import hljs from 'highlight.js';
 
 interface CodeBlockProps {
     code: string;
     language: string;
+    highlightedChildren?: unknown;
 }
 
 export default function CodeBlock({ code, language }: CodeBlockProps) {
     const [copied, setCopied] = useState(false);
+
+    const highlighted = useMemo(() => {
+        try {
+            if (language && hljs.getLanguage(language)) {
+                return hljs.highlight(code, { language }).value;
+            }
+            return hljs.highlightAuto(code).value;
+        } catch {
+            return code;
+        }
+    }, [code, language]);
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(code);
@@ -38,8 +51,11 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
                 </button>
             </div>
             {/* Code */}
-            <pre className="p-3 overflow-x-auto text-[13px] leading-relaxed font-mono text-text-primary">
-                <code className={language ? `language-${language}` : ''}>{code}</code>
+            <pre className="p-3 overflow-x-auto text-[13px] leading-relaxed font-mono">
+                <code
+                    className={`hljs ${language ? `language-${language}` : ''}`}
+                    dangerouslySetInnerHTML={{ __html: highlighted }}
+                />
             </pre>
         </div>
     );

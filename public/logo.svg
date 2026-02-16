@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Solid indigo rounded square -->
+  <rect width="512" height="512" rx="108" fill="#6366f1"/>
+
+  <!-- Projector screen icon -->
+  <g transform="translate(256, 256)">
+    <!-- Top mounting bar -->
+    <rect x="-120" y="-130" width="240" height="20" rx="6" fill="white" opacity="0.95"/>
+
+    <!-- Screen body (pull-down canvas) -->
+    <rect x="-100" y="-110" width="200" height="200" rx="4" fill="white" opacity="0.85"/>
+
+    <!-- Bottom pull tab -->
+    <circle cx="0" cy="100" r="10" fill="white" opacity="0.95"/>
+  </g>
+</svg>

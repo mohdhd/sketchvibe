@@ -6,6 +6,7 @@ import {
     getSTTProvider, setSTTProvider, getTTSProvider, setTTSProvider,
     getVoiceApiKey, setVoiceApiKey, getTavilyApiKey, setTavilyApiKey,
     getWebSearchEnabled, setWebSearchEnabled,
+    openaiVoices, elevenLabsVoices, getEffectiveTTSVoice, setTTSVoice,
     type STTProvider, type TTSProvider,
 } from '../lib/providers';
 import { exportAllData, importAllData, clearAllData } from '../lib/exportImport';
@@ -167,8 +168,11 @@ function ProvidersTab({
 function VoiceTab() {
     const [sttProvider, setSttState] = useState<STTProvider>(getSTTProvider());
     const [ttsProvider, setTtsState] = useState<TTSProvider>(getTTSProvider());
+    const [ttsVoice, setTtsVoiceState] = useState(() => getEffectiveTTSVoice());
     const [elevenLabsKey, setElevenLabsKey] = useState(() => getVoiceApiKey('stt', 'elevenlabs'));
     const [showElevenLabsKey, setShowElevenLabsKey] = useState(false);
+
+    const voiceOptions = ttsProvider === 'openai-tts' ? openaiVoices : elevenLabsVoices;
 
     const handleElevenLabsKeyChange = (value: string) => {
         setElevenLabsKey(value);
@@ -205,6 +209,10 @@ function VoiceTab() {
                         const val = e.target.value as TTSProvider;
                         setTtsState(val);
                         setTTSProvider(val);
+                        // Reset voice to default for new provider
+                        const defaultVoice = val === 'openai-tts' ? 'alloy' : 'EXAVITQu4vr4xnSDxMaL';
+                        setTtsVoiceState(defaultVoice);
+                        setTTSVoice(defaultVoice);
                     }}
                     className="w-full px-3 py-2 text-sm bg-bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
                 >
@@ -214,6 +222,23 @@ function VoiceTab() {
                 <p className="text-[11px] text-text-tertiary mt-1">
                     {ttsProvider === 'openai-tts' ? 'Uses your OpenAI API key' : 'Requires ElevenLabs API key below'}
                 </p>
+            </div>
+
+            {/* Voice selection */}
+            <div>
+                <label className="block text-xs font-medium text-text-secondary mb-2">Read Aloud Voice</label>
+                <select
+                    value={ttsVoice}
+                    onChange={(e) => {
+                        setTtsVoiceState(e.target.value);
+                        setTTSVoice(e.target.value);
+                    }}
+                    className="w-full px-3 py-2 text-sm bg-bg-surface border border-border rounded-lg text-text-primary focus:outline-none focus:border-accent"
+                >
+                    {voiceOptions.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                </select>
             </div>
 
             {/* ElevenLabs API key */}

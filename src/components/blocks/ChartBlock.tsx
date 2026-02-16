@@ -53,12 +53,21 @@ export default function ChartBlock({ config }: ChartBlockProps) {
         );
     }
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
     const defaultOptions = {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
-                labels: { color: '#8888a0', font: { family: 'Inter', size: 12 } },
+                labels: {
+                    color: '#8888a0',
+                    font: { family: 'Inter', size: isMobile ? 10 : 12 },
+                    boxWidth: isMobile ? 8 : 40,
+                    boxHeight: isMobile ? 8 : 12,
+                    padding: isMobile ? 6 : 10,
+                    usePointStyle: isMobile,
+                },
             },
             tooltip: {
                 backgroundColor: '#1a1a26',
@@ -73,11 +82,11 @@ export default function ChartBlock({ config }: ChartBlockProps) {
         scales: chartConfig.type !== 'pie' && chartConfig.type !== 'doughnut' ? {
             x: {
                 grid: { color: 'rgba(255,255,255,0.04)' },
-                ticks: { color: '#555570', font: { family: 'Inter', size: 11 } },
+                ticks: { color: '#555570', font: { family: 'Inter', size: isMobile ? 10 : 11 } },
             },
             y: {
                 grid: { color: 'rgba(255,255,255,0.04)' },
-                ticks: { color: '#555570', font: { family: 'Inter', size: 11 } },
+                ticks: { color: '#555570', font: { family: 'Inter', size: isMobile ? 10 : 11 } },
             },
         } : undefined,
         ...chartConfig.options,
@@ -108,7 +117,9 @@ export default function ChartBlock({ config }: ChartBlockProps) {
 
     return (
         <div className="my-3 p-4 rounded-lg border border-border bg-bg-surface">
-            <ChartComponent data={data} options={defaultOptions} />
+            <div style={{ position: 'relative', width: '100%', minHeight: '280px' }}>
+                <ChartComponent data={data} options={defaultOptions} />
+            </div>
         </div>
     );
 }

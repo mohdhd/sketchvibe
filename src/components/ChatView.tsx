@@ -6,6 +6,7 @@ import { streamChat, type ChatMessage } from '../lib/ai';
 import { buildSystemPrompt } from '../lib/systemPrompts';
 import { getApiKey, getTavilyApiKey } from '../lib/providers';
 import { searchWeb, formatSearchResultsForPrompt } from '../lib/search';
+import type { Attachment } from '../lib/db';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
 
@@ -43,12 +44,13 @@ export default function ChatView() {
     const handleScroll = useCallback(() => {
         const el = scrollContainerRef.current;
         if (!el) return;
+        const isScrollable = el.scrollHeight > el.clientHeight + 50;
         const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-        setShowScrollBtn(!atBottom);
+        setShowScrollBtn(isScrollable && !atBottom);
     }, []);
 
     const handleSend = useCallback(
-        async (text: string, webSearch: boolean) => {
+        async (text: string, webSearch: boolean, visualMode: boolean = true, attachments: Attachment[] = []) => {
             let conversationId = activeConversationId;
 
             if (!conversationId) {
@@ -62,7 +64,7 @@ export default function ChatView() {
                 return;
             }
 
-            await addMessage(conversationId, 'user', text);
+            await addMessage(conversationId, 'user', text, undefined, attachments.length > 0 ? attachments : undefined);
 
             // Auto-title on first message
             const msgCount = messages.length;
@@ -90,11 +92,11 @@ export default function ChatView() {
                 }
             }
 
-            const systemPrompt = buildSystemPrompt(webSearch, currentDate);
+            const systemPrompt = buildSystemPrompt(webSearch, currentDate, visualMode);
 
             const chatMessages: ChatMessage[] = [
-                ...messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-                { role: 'user' as const, content: searchContext ? text + searchContext : text },
+                ...messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content, attachments: m.attachments })),
+                { role: 'user' as const, content: searchContext ? text + searchContext : text, attachments: attachments.length > 0 ? attachments : undefined },
             ];
 
             setIsStreaming(true);
@@ -156,6 +158,7 @@ export default function ChatView() {
                 >
                     <PanelLeft size={20} />
                 </button>
+                <img src="/logo.svg" alt="" style={{ width: 22, height: 22, borderRadius: 5 }} />
                 <span className="text-sm font-medium text-text-primary truncate">SketchVibe</span>
             </div>
 
@@ -168,6 +171,7 @@ export default function ChatView() {
                     >
                         <PanelLeft size={20} />
                     </button>
+                    <img src="/logo.svg" alt="" style={{ width: 22, height: 22, borderRadius: 5 }} />
                     <span className="text-sm font-medium text-text-primary">SketchVibe</span>
                 </div>
             )}
@@ -202,7 +206,7 @@ export default function ChatView() {
                         </div>
                     </div>
                 ) : (
-                    <div className="max-w-3xl mx-auto px-4 py-6 space-y-1">
+                    <div className="max-w-4xl mx-auto px-4 py-6 space-y-1">
                         {messages.map((msg) => (
                             <MessageBubble
                                 key={msg.id}
@@ -225,17 +229,16 @@ export default function ChatView() {
                         <div ref={messagesEndRef} />
                     </div>
                 )}
+                {/* Scroll to bottom button */}
+                {showScrollBtn && (
+                    <button
+                        onClick={() => scrollToBottom()}
+                        className="absolute bottom-4 left-1/2 -translate-x-1/2 p-2 rounded-full bg-bg-surface border border-border shadow-md hover:bg-bg-surface-hover transition-all animate-fade-in z-10"
+                    >
+                        <ArrowDown size={16} className="text-text-secondary" />
+                    </button>
+                )}
             </div>
-
-            {/* Scroll to bottom button */}
-            {showScrollBtn && (
-                <button
-                    onClick={() => scrollToBottom()}
-                    className="absolute bottom-24 left-1/2 -translate-x-1/2 p-2 rounded-full bg-bg-surface border border-border shadow-md hover:bg-bg-surface-hover transition-all animate-fade-in z-10"
-                >
-                    <ArrowDown size={16} className="text-text-secondary" />
-                </button>
-            )}
 
             {/* Input */}
             <ChatInput

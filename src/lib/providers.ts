@@ -2,6 +2,7 @@ export interface ProviderModel {
     id: string;
     name: string;
     contextWindow: number;
+    maxOutputTokens: number;
     /** OpenAI reasoning effort level — only for GPT-5.2 thinking variants */
     thinkingLevel?: 'low' | 'medium' | 'high' | 'xhigh';
 }
@@ -23,11 +24,11 @@ export const providers: Provider[] = [
         endpointUrl: 'https://api.openai.com/v1/chat/completions',
         keyPrefix: 'sk-',
         models: [
-            { id: 'gpt-5.2:low', name: 'GPT-5.2 (Low)', contextWindow: 128000, thinkingLevel: 'low' },
-            { id: 'gpt-5.2:medium', name: 'GPT-5.2 (Medium)', contextWindow: 128000, thinkingLevel: 'medium' },
-            { id: 'gpt-5.2:high', name: 'GPT-5.2 (High)', contextWindow: 128000, thinkingLevel: 'high' },
-            { id: 'gpt-5.2:xhigh', name: 'GPT-5.2 (xHigh)', contextWindow: 128000, thinkingLevel: 'xhigh' },
-            { id: 'gpt-5.2-mini', name: 'GPT-5.2 Mini', contextWindow: 128000 },
+            { id: 'gpt-5.2:low', name: 'GPT-5.2 (Low)', contextWindow: 128000, maxOutputTokens: 128000, thinkingLevel: 'low' },
+            { id: 'gpt-5.2:medium', name: 'GPT-5.2 (Medium)', contextWindow: 128000, maxOutputTokens: 128000, thinkingLevel: 'medium' },
+            { id: 'gpt-5.2:high', name: 'GPT-5.2 (High)', contextWindow: 128000, maxOutputTokens: 128000, thinkingLevel: 'high' },
+            { id: 'gpt-5.2:xhigh', name: 'GPT-5.2 (xHigh)', contextWindow: 128000, maxOutputTokens: 128000, thinkingLevel: 'xhigh' },
+            { id: 'gpt-5.2-mini', name: 'GPT-5.2 Mini', contextWindow: 128000, maxOutputTokens: 128000 },
         ],
     },
     {
@@ -37,9 +38,9 @@ export const providers: Provider[] = [
         endpointUrl: 'https://api.anthropic.com/v1/messages',
         keyPrefix: 'sk-ant-',
         models: [
-            { id: 'claude-opus-4-6', name: 'Claude 4.6 Opus', contextWindow: 1000000 },
-            { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', contextWindow: 200000 },
-            { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', contextWindow: 200000 },
+            { id: 'claude-opus-4-6', name: 'Claude 4.6 Opus', contextWindow: 1000000, maxOutputTokens: 128000 },
+            { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', contextWindow: 200000, maxOutputTokens: 64000 },
+            { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', contextWindow: 200000, maxOutputTokens: 64000 },
         ],
     },
     {
@@ -49,8 +50,8 @@ export const providers: Provider[] = [
         endpointUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
         keyPrefix: 'AI',
         models: [
-            { id: 'gemini-3-flash', name: 'Gemini 3 Flash', contextWindow: 1000000 },
-            { id: 'gemini-3-pro', name: 'Gemini 3 Pro', contextWindow: 2000000 },
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', contextWindow: 1000000, maxOutputTokens: 65536 },
+            { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', contextWindow: 2000000, maxOutputTokens: 65536 },
         ],
     },
     {
@@ -60,8 +61,8 @@ export const providers: Provider[] = [
         endpointUrl: 'https://api.x.ai/v1/chat/completions',
         keyPrefix: 'xai-',
         models: [
-            { id: 'grok-4.1-fast', name: 'Grok 4.1 Fast (Reasoning)', contextWindow: 2000000 },
-            { id: 'grok-4.1-fast-no-reasoning', name: 'Grok 4.1 Fast (No Reasoning)', contextWindow: 2000000 },
+            { id: 'grok-4.1-fast', name: 'Grok 4.1 Fast (Reasoning)', contextWindow: 2000000, maxOutputTokens: 131072 },
+            { id: 'grok-4.1-fast-no-reasoning', name: 'Grok 4.1 Fast (No Reasoning)', contextWindow: 2000000, maxOutputTokens: 131072 },
         ],
     },
 ];
@@ -91,7 +92,15 @@ export function setActiveProvider(providerId: string) {
 }
 
 export function getActiveModel(): string {
-    return localStorage.getItem(ACTIVE_MODEL_KEY) || 'gpt-5.2:low';
+    const stored = localStorage.getItem(ACTIVE_MODEL_KEY) || 'gpt-5.2:low';
+    // Validate the stored model still exists in current provider list
+    const exists = providers.some((p) => p.models.some((m) => m.id === stored));
+    if (exists) return stored;
+    // Stale model ID — fall back to the first model of the active provider
+    const activeProvider = getProvider(getActiveProvider());
+    const fallback = activeProvider?.models[0]?.id || 'gpt-5.2:low';
+    localStorage.setItem(ACTIVE_MODEL_KEY, fallback);
+    return fallback;
 }
 
 export function setActiveModel(modelId: string) {
@@ -115,6 +124,54 @@ const TTS_KEY_PREFIX = 'sketchvibe_tts_key_';
 
 export type STTProvider = 'whisper' | 'elevenlabs-scribe';
 export type TTSProvider = 'openai-tts' | 'elevenlabs-tts';
+
+// ─── TTS Voice Options ───
+
+export const openaiVoices = [
+    { id: 'alloy', name: 'Alloy' },
+    { id: 'ash', name: 'Ash' },
+    { id: 'coral', name: 'Coral' },
+    { id: 'echo', name: 'Echo' },
+    { id: 'fable', name: 'Fable' },
+    { id: 'nova', name: 'Nova' },
+    { id: 'onyx', name: 'Onyx' },
+    { id: 'sage', name: 'Sage' },
+    { id: 'shimmer', name: 'Shimmer' },
+];
+
+export const elevenLabsVoices = [
+    { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
+    { id: 'wBXNqKUATyqu0RtYt25i', name: 'Adam' },
+    { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi' },
+    { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli' },
+    { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh' },
+    { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam' },
+    { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella' },
+    { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni' },
+];
+
+const TTS_VOICE_KEY = 'sketchvibe_tts_voice';
+
+export function getTTSVoice(): string {
+    return localStorage.getItem(TTS_VOICE_KEY) || '';
+}
+
+export function setTTSVoice(voiceId: string) {
+    localStorage.setItem(TTS_VOICE_KEY, voiceId);
+}
+
+/** Get the effective voice ID for the current TTS provider */
+export function getEffectiveTTSVoice(): string {
+    const stored = getTTSVoice();
+    const provider = getTTSProvider();
+    if (provider === 'openai-tts') {
+        const valid = openaiVoices.some((v) => v.id === stored);
+        return valid ? stored : 'alloy';
+    } else {
+        const valid = elevenLabsVoices.some((v) => v.id === stored);
+        return valid ? stored : 'EXAVITQu4vr4xnSDxMaL';
+    }
+}
 
 export function getSTTProvider(): STTProvider {
     return (localStorage.getItem(STT_PROVIDER_KEY) as STTProvider) || 'whisper';

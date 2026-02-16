@@ -11,11 +11,19 @@ export interface Conversation {
     webSearchEnabled: boolean;
 }
 
+export interface Attachment {
+    type: 'image' | 'file';
+    name: string;
+    mimeType: string;
+    dataUrl: string; // data:mime;base64,...
+}
+
 export interface Message {
     id: string;
     conversationId: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
+    attachments?: Attachment[];
     sources?: SearchSource[];
     createdAt: number;
 }

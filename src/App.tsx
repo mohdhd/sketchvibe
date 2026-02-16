@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
@@ -6,8 +7,9 @@ import SettingsModal from './components/SettingsModal';
 import CanvasStudio from './components/canvas/CanvasStudio';
 import CanvasLibrary from './components/canvas/CanvasLibrary';
 import TipPrompt, { shouldShowTip, incrementTipCounter } from './components/TipPrompt';
+import LandingPage from './components/LandingPage';
 
-function AppContent() {
+function ChatApp() {
   const { activeModal, activeConversationId } = useApp();
   const [showTip, setShowTip] = useState(false);
 
@@ -22,7 +24,7 @@ function AppContent() {
   }, [activeConversationId]);
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden">
       <Sidebar />
       <ChatView />
 
@@ -35,10 +37,21 @@ function AppContent() {
   );
 }
 
+function AppContent() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/chat" element={<ChatApp />} />
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <BrowserRouter>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </BrowserRouter>
   );
 }

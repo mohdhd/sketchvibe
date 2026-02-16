@@ -81,7 +81,8 @@ export async function addMessage(
     conversationId: string,
     role: 'user' | 'assistant' | 'system',
     content: string,
-    sources?: Message['sources']
+    sources?: Message['sources'],
+    attachments?: Message['attachments']
 ): Promise<string> {
     const id = nanoid();
     await db.messages.add({
@@ -89,6 +90,7 @@ export async function addMessage(
         conversationId,
         role,
         content,
+        attachments,
         sources,
         createdAt: Date.now(),
     });
