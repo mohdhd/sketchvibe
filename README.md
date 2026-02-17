@@ -54,10 +54,10 @@ Deploy your own instance of SketchVibe with one click:
 
 | Provider | Models | API Key Prefix |
 |----------|--------|----------------|
-| OpenAI | GPT-4o, GPT-5.2, o3-mini & more | `sk-` |
-| Anthropic | Claude Sonnet 4, Claude 3.5 | `sk-ant-` |
-| Google Gemini | Gemini 2.5 Flash/Pro | `AI...` |
-| xAI Grok | Grok 3, Grok 3 Mini | `xai-` |
+| OpenAI | GPT-5.2, GPT-5.2 Mini | `sk-` |
+| Anthropic | Claude 4.6 Opus, Claude 4.5 Sonnet, Claude 4.5 Haiku | `sk-ant-` |
+| Google Gemini | Gemini 3 Flash, Gemini 3 Pro | `AI...` |
+| xAI Grok | Grok 4.1 Fast | `xai-` |
 
 ## 🗂️ Tech Stack
 
