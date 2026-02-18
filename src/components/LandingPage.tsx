@@ -82,14 +82,14 @@ export default function LandingPage() {
                         ⭐ Star on GitHub
                     </a>
                 </div>
-                <div style={{ marginTop: 24 }}>
+                <div style={{ marginTop: 24, textAlign: 'center' }}>
                     <a
                         href="https://www.producthunt.com/products/sketchvibe-talk-to-llms-the-right-way?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sketchvibe"
                         target="_blank"
                         rel="noopener noreferrer"
                     >
                         <img
-                            src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1081006&theme=dark&t=1771449244377"
+                            src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1081006&theme=light&t=1771449244377"
                             alt="SketchVibe on Product Hunt"
                             width="250"
                             height="54"
