@@ -9,6 +9,8 @@ Local-first, bring your own keys, voice-enabled.
 
 [**🌐 Try It Live**](https://sketchvibe.app) · [**☕ Buy Me a Coffee**](https://buymeacoffee.com/soloforge) · [**🚀 Deploy with Vercel**](#deploy-your-own)
 
+<a href="https://www.producthunt.com/products/sketchvibe-talk-to-llms-the-right-way?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-sketchvibe" target="_blank" rel="noopener noreferrer"><img alt="SketchVibe on Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1081006&theme=dark&t=1771449244377"></a>
+
 ![SketchVibe Screenshot](public/hero.png)
 
 </div>
